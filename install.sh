@@ -33,7 +33,7 @@ fi
 # 编译程序
 echo "📦 编译 kubectl-html..."
 go mod tidy
-go build -o kubectl-html main.go
+go build -ldflags "-s -w" -o kubectl-html main.go
 
 if [ ! -f "kubectl-html" ]; then
     echo "❌ 编译失败"

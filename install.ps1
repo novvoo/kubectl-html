@@ -26,7 +26,7 @@ Write-Host "📋 Go 版本: $goVersion" -ForegroundColor Cyan
 # 编译程序
 Write-Host "📦 编译 kubectl-html..." -ForegroundColor Yellow
 go mod tidy
-go build -o kubectl-html.exe main.go
+go build -ldflags "-s -w" -o kubectl-html.exe main.go
 
 if (!(Test-Path "kubectl-html.exe")) {
     Write-Host "❌ 编译失败" -ForegroundColor Red
