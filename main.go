@@ -977,26 +977,31 @@ func calculateAge(creationTimestamp interface{}) string {
 func parseKubernetesYAML(yamlData string) ([]K8sResource, error) {
 	var resources []K8sResource
 
-	// 分割多文档 YAML
+	// 首先尝试直接解析为 List 类型（不分割文档）
+	var list K8sList
+	if err := yaml.Unmarshal([]byte(yamlData), &list); err == nil && list.Kind == "List" {
+		log.Printf("📋 Found List with %d items", len(list.Items))
+		resources = append(resources, list.Items...)
+		return resources, nil
+	}
+
+	// 如果不是 List，则分割多文档 YAML
 	docs := strings.Split(yamlData, "---")
+	log.Printf("📄 Split into %d documents", len(docs))
 	
-	for _, doc := range docs {
+	for i, doc := range docs {
 		doc = strings.TrimSpace(doc)
 		if doc == "" {
 			continue
 		}
 
-		// 首先尝试解析为 List 类型
-		var list K8sList
-		if err := yaml.Unmarshal([]byte(doc), &list); err == nil && list.Kind == "List" {
-			resources = append(resources, list.Items...)
-			continue
-		}
-
-		// 然后尝试解析为单个资源
+		// 尝试解析为单个资源
 		var resource K8sResource
 		if err := yaml.Unmarshal([]byte(doc), &resource); err == nil && resource.Kind != "" {
+			log.Printf("📦 Document %d: Found %s resource", i, resource.Kind)
 			resources = append(resources, resource)
+		} else {
+			log.Printf("⚠️  Document %d: Failed to parse - %v", i, err)
 		}
 	}
 
