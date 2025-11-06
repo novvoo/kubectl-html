@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"html/template"
 	"log"
@@ -1095,44 +1094,60 @@ func countNamespaces(resources []K8sResource) int {
 }
 
 func main() {
-	// 定义命令行参数
-	var (
-		host = flag.String("host", "localhost", "服务器监听地址 (localhost, 0.0.0.0, 或具体IP)")
-		port = flag.String("port", "8000", "服务器监听端口")
-		help = flag.Bool("help", false, "显示帮助信息")
-	)
+	// 手动解析参数，避免影响 kubectl 参数
+	var host, port string = "localhost", "8000"
+	var kubectlArgs []string
 
-	// 解析命令行参数
-	flag.Parse()
-
-	if *help {
-		fmt.Println("kubectl-html - Kubernetes 资源可视化工具")
-		fmt.Println("")
-		fmt.Println("用法:")
-		fmt.Println("  kubectl-html [选项] [kubectl参数...]")
-		fmt.Println("")
-		fmt.Println("选项:")
-		fmt.Println("  -host string    服务器监听地址 (默认: localhost)")
-		fmt.Println("                  localhost - 仅本机访问")
-		fmt.Println("                  0.0.0.0   - 允许外部访问")
-		fmt.Println("                  具体IP    - 绑定到指定网卡")
-		fmt.Println("  -port string    服务器监听端口 (默认: 8000)")
-		fmt.Println("  -help           显示此帮助信息")
-		fmt.Println("")
-		fmt.Println("示例:")
-		fmt.Println("  kubectl-html get pods")
-		fmt.Println("  kubectl-html -host 0.0.0.0 get pods")
-		fmt.Println("  kubectl-html -host 0.0.0.0 -port 9000 get deployments -A")
-		fmt.Println("  kubectl-html get po,svc,deploy -n kube-system")
-		fmt.Println("")
-		fmt.Println("安全提示:")
-		fmt.Println("  使用 0.0.0.0 会允许网络中的其他设备访问")
-		fmt.Println("  请确保网络环境安全，或使用防火墙限制访问")
-		return
+	// 解析自定义参数
+	args := os.Args[1:]
+	i := 0
+	for i < len(args) {
+		switch args[i] {
+		case "-host":
+			if i+1 < len(args) {
+				host = args[i+1]
+				i += 2
+			} else {
+				log.Fatal("错误: -host 参数需要一个值")
+			}
+		case "-port":
+			if i+1 < len(args) {
+				port = args[i+1]
+				i += 2
+			} else {
+				log.Fatal("错误: -port 参数需要一个值")
+			}
+		case "-help", "--help", "-h":
+			fmt.Println("kubectl-html - Kubernetes 资源可视化工具")
+			fmt.Println("")
+			fmt.Println("用法:")
+			fmt.Println("  kubectl-html [选项] [kubectl参数...]")
+			fmt.Println("")
+			fmt.Println("选项:")
+			fmt.Println("  -host string    服务器监听地址 (默认: localhost)")
+			fmt.Println("                  localhost - 仅本机访问")
+			fmt.Println("                  0.0.0.0   - 允许外部访问")
+			fmt.Println("                  具体IP    - 绑定到指定网卡")
+			fmt.Println("  -port string    服务器监听端口 (默认: 8000)")
+			fmt.Println("  -help           显示此帮助信息")
+			fmt.Println("")
+			fmt.Println("示例:")
+			fmt.Println("  kubectl-html get pods")
+			fmt.Println("  kubectl-html -host 0.0.0.0 get pods")
+			fmt.Println("  kubectl-html -host 0.0.0.0 -port 9000 get deployments -A")
+			fmt.Println("  kubectl-html get po,svc,deploy -n kube-system")
+			fmt.Println("")
+			fmt.Println("安全提示:")
+			fmt.Println("  使用 0.0.0.0 会允许网络中的其他设备访问")
+			fmt.Println("  请确保网络环境安全，或使用防火墙限制访问")
+			return
+		default:
+			// 其他参数都是 kubectl 参数
+			kubectlArgs = append(kubectlArgs, args[i])
+			i++
+		}
 	}
 
-	// 获取 kubectl 参数
-	kubectlArgs := flag.Args()
 	if len(kubectlArgs) == 0 {
 		log.Fatal("错误: 需要提供 kubectl 参数\n\n" +
 			"用法: kubectl-html [选项] [kubectl参数...]\n" +
@@ -1211,20 +1226,20 @@ func main() {
 	})
 
 	// 构造监听地址
-	listenAddr := *host + ":" + *port
+	listenAddr := host + ":" + port
 	
 	fmt.Printf("\n✅ Kubernetes 资源查看器已启动!\n")
 	
 	// 显示访问地址
-	if *host == "0.0.0.0" {
+	if host == "0.0.0.0" {
 		fmt.Printf("🌐 Web界面: \n")
-		fmt.Printf("   本机访问: http://localhost:%s\n", *port)
-		fmt.Printf("   网络访问: http://<你的IP>:%s\n", *port)
+		fmt.Printf("   本机访问: http://localhost:%s\n", port)
+		fmt.Printf("   网络访问: http://<你的IP>:%s\n", port)
 		fmt.Printf("⚠️  警告: 允许外部网络访问，请确保网络安全!\n")
-	} else if *host == "localhost" || *host == "127.0.0.1" {
-		fmt.Printf("🌐 Web界面: http://localhost:%s\n", *port)
+	} else if host == "localhost" || host == "127.0.0.1" {
+		fmt.Printf("🌐 Web界面: http://localhost:%s\n", port)
 	} else {
-		fmt.Printf("🌐 Web界面: http://%s:%s\n", *host, *port)
+		fmt.Printf("🌐 Web界面: http://%s:%s\n", host, port)
 	}
 	
 	fmt.Printf("📦 资源总数: %d\n", len(resources))
